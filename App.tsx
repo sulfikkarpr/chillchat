@@ -11,7 +11,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ProfileProvider, useProfile } from './contexts/ProfileContext';
+import ProfileProvider from './contexts/ProfileContext';
 
 import ProfileScreen from './screens/ProfileScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -74,7 +74,7 @@ const TabNavigator = () => {
 };
 
 const AppNavigator = () => {
-  const { profile, loading } = useProfile();
+  const { profile, loading } = ProfileProvider.useProfile();
 
   if (loading) {
     return null; // Or a loading screen
