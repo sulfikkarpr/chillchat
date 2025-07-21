@@ -1,11 +1,19 @@
 import RNBluetoothClassic from 'react-native-bluetooth-classic';
 import { PermissionsAndroid, Platform } from 'react-native';
+import { 
+  saveChatSession, 
+  updateSessionActiveStatus, 
+  addMessageToSession,
+  generateDeviceId,
+  generateMessageId 
+} from '../utils/storage';
 
 class BluetoothService {
   constructor() {
     this.connectedDevice = null;
     this.messageListeners = [];
     this.connectionListeners = [];
+    this.currentSession = null;
   }
 
   // Request necessary permissions
@@ -95,6 +103,7 @@ class BluetoothService {
       
       if (device) {
         this.connectedDevice = device;
+        await this.createOrUpdateSession(device);
         this.startListeningForMessages();
         this.notifyConnectionListeners(true, device);
         return device;
@@ -110,9 +119,11 @@ class BluetoothService {
   // Disconnect from current device
   async disconnectDevice() {
     try {
-      if (this.connectedDevice) {
+      if (this.connectedDevice && this.currentSession) {
+        await updateSessionActiveStatus(this.currentSession.deviceId, false);
         await this.connectedDevice.disconnect();
         this.connectedDevice = null;
+        this.currentSession = null;
         this.notifyConnectionListeners(false, null);
       }
     } catch (error) {
@@ -204,6 +215,57 @@ class BluetoothService {
   // Get connected device info
   getConnectedDevice() {
     return this.connectedDevice;
+  }
+
+  // Create or update chat session
+  async createOrUpdateSession(device) {
+    try {
+      const deviceId = generateDeviceId(device.address);
+      const session = {
+        deviceId,
+        deviceName: device.name || 'Unknown Device',
+        deviceAddress: device.address,
+        lastConnected: new Date().toISOString(),
+        messages: [],
+        isActive: true,
+      };
+
+      this.currentSession = session;
+      await saveChatSession(session);
+      await updateSessionActiveStatus(deviceId, true);
+    } catch (error) {
+      console.error('Error creating/updating session:', error);
+    }
+  }
+
+  // Add message to current session
+  async addMessageToCurrentSession(messageText, sender) {
+    try {
+      if (!this.currentSession) return null;
+
+      const message = {
+        id: generateMessageId(),
+        text: messageText,
+        timestamp: new Date().toISOString(),
+        sender: sender,
+      };
+
+      await addMessageToSession(this.currentSession.deviceId, message);
+      return message;
+    } catch (error) {
+      console.error('Error adding message to session:', error);
+      return null;
+    }
+  }
+
+  // Get current session
+  getCurrentSession() {
+    return this.currentSession;
+  }
+
+  // Set existing session
+  setCurrentSession(session) {
+    this.currentSession = session;
   }
 }
 

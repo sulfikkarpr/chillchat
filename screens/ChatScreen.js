@@ -11,21 +11,34 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useProfile } from '../contexts/ProfileContext';
 import BluetoothService from '../services/BluetoothService';
 import MessageBubble from '../components/MessageBubble';
+import { generateDeviceId } from '../utils/storage';
 
 const ChatScreen = ({ navigation, route }) => {
+  const { profile } = useProfile();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState(null);
+  const [currentSession, setCurrentSession] = useState(null);
   const flatListRef = useRef(null);
 
   useEffect(() => {
     const device = route.params?.device;
+    const existingSession = route.params?.existingSession;
+    
     if (device) {
       setConnectedDevice(device);
       setIsConnected(true);
+    }
+
+    // Load existing session if available
+    if (existingSession) {
+      setCurrentSession(existingSession);
+      setMessages(existingSession.messages || []);
+      BluetoothService.setCurrentSession(existingSession);
     }
 
     // Set up navigation header
@@ -42,7 +55,10 @@ const ChatScreen = ({ navigation, route }) => {
     });
 
     // Listen for incoming messages
-    const messageListener = (message) => {
+    const messageListener = async (message) => {
+      // Add message to session storage
+      await BluetoothService.addMessageToCurrentSession(message.text, 'other');
+      
       setMessages(prevMessages => [...prevMessages, message]);
       scrollToBottom();
     };
@@ -67,13 +83,15 @@ const ChatScreen = ({ navigation, route }) => {
     BluetoothService.addMessageListener(messageListener);
     BluetoothService.addConnectionListener(connectionListener);
 
-    // Add welcome message
-    const welcomeMessage = {
-      text: `Connected to ${device?.name || 'device'}. Start chatting!`,
-      timestamp: new Date().toISOString(),
-      sender: 'system',
-    };
-    setMessages([welcomeMessage]);
+    // Add welcome message only for new connections
+    if (!existingSession) {
+      const welcomeMessage = {
+        text: `Connected to ${device?.name || 'device'}. Start chatting!`,
+        timestamp: new Date().toISOString(),
+        sender: 'system',
+      };
+      setMessages([welcomeMessage]);
+    }
 
     return () => {
       BluetoothService.removeMessageListener(messageListener);
@@ -97,6 +115,10 @@ const ChatScreen = ({ navigation, route }) => {
 
     try {
       const messageData = await BluetoothService.sendMessage(inputText.trim());
+      
+      // Add message to session storage
+      await BluetoothService.addMessageToCurrentSession(messageData.text, 'me');
+      
       setMessages(prevMessages => [...prevMessages, messageData]);
       setInputText('');
       scrollToBottom();

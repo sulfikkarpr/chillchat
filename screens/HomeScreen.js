@@ -10,13 +10,17 @@ import {
   RefreshControl,
   StatusBar,
 } from 'react-native';
+import { useProfile } from '../contexts/ProfileContext';
 import BluetoothService from '../services/BluetoothService';
+import DeviceItem from '../components/DeviceItem';
 
 const HomeScreen = ({ navigation }) => {
+  const { profile } = useProfile();
   const [devices, setDevices] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isBluetoothEnabled, setIsBluetoothEnabled] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [connectingDevice, setConnectingDevice] = useState(null);
 
   useEffect(() => {
     initializeBluetooth();
@@ -108,33 +112,24 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const connectToDevice = async (device) => {
+    if (connectingDevice === device.address) return;
+    
+    setConnectingDevice(device.address);
     try {
-      Alert.alert(
-        'Connect to Device',
-        `Do you want to connect to ${device.name}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Connect',
-            onPress: async () => {
-              const connectedDevice = await BluetoothService.connectToDevice(device.address);
-              if (connectedDevice) {
-                Alert.alert('Success', 'Connected to device!', [
-                  {
-                    text: 'OK',
-                    onPress: () => navigation.navigate('Chat', { device: connectedDevice }),
-                  },
-                ]);
-              } else {
-                Alert.alert('Error', 'Failed to connect to device');
-              }
-            },
-          },
-        ]
-      );
+      const connectedDevice = await BluetoothService.connectToDevice(device.address);
+      if (connectedDevice) {
+        navigation.navigate('Chat', { 
+          device: connectedDevice,
+          fromDiscovery: true 
+        });
+      } else {
+        Alert.alert('Connection Failed', 'Could not connect to the device. Please try again.');
+      }
     } catch (error) {
       console.error('Error connecting to device:', error);
-      Alert.alert('Error', 'Failed to connect to device');
+      Alert.alert('Connection Error', 'Failed to connect to device. Make sure it\'s nearby and available.');
+    } finally {
+      setConnectingDevice(null);
     }
   };
 
@@ -145,22 +140,11 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const renderDevice = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.deviceItem, item.bonded && styles.bondedDevice]}
+    <DeviceItem
+      device={item}
       onPress={() => connectToDevice(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.deviceInfo}>
-        <Text style={styles.deviceName}>{item.name}</Text>
-        <Text style={styles.deviceAddress}>{item.address}</Text>
-        {item.bonded && (
-          <Text style={styles.bondedLabel}>Paired</Text>
-        )}
-      </View>
-      <View style={styles.connectIcon}>
-        <Text style={styles.connectText}>Connect</Text>
-      </View>
-    </TouchableOpacity>
+      isConnecting={connectingDevice === item.address}
+    />
   );
 
   return (
@@ -168,8 +152,8 @@ const HomeScreen = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#007AFF" />
       
       <View style={styles.header}>
-        <Text style={styles.title}>ChillChat</Text>
-        <Text style={styles.subtitle}>Bluetooth Chat App</Text>
+        <Text style={styles.title}>Discover Devices</Text>
+        <Text style={styles.subtitle}>Welcome {profile.nickname} {profile.avatar}</Text>
       </View>
 
       <View style={styles.content}>
@@ -294,58 +278,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-  deviceItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  bondedDevice: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
-  },
-  deviceInfo: {
-    flex: 1,
-  },
-  deviceName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 4,
-  },
-  deviceAddress: {
-    fontSize: 14,
-    color: '#666666',
-    fontFamily: 'monospace',
-  },
-  bondedLabel: {
-    fontSize: 12,
-    color: '#4CAF50',
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  connectIcon: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
-  },
-  connectText: {
-    color: '#007AFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
+
 });
 
 export default HomeScreen;

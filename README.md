@@ -1,23 +1,41 @@
 # 📱 ChillChat - Bluetooth Chat App
 
-A modern React Native chat application that enables peer-to-peer communication over Bluetooth Classic. Built for Android devices with a beautiful and intuitive user interface.
+A comprehensive React Native chat application that enables peer-to-peer communication over Bluetooth Classic. Built for Android devices with a beautiful, modern UI and complete session management.
 
 ## ✨ Features
 
-- 🔵 **Bluetooth Classic Connectivity** - Real-time communication between Android devices
-- 📱 **Modern UI/UX** - Clean, chat-app inspired interface with message bubbles
-- 🔍 **Device Discovery** - Scan for and connect to nearby Bluetooth devices  
-- 💬 **Real-time Messaging** - Send and receive messages instantly
-- 🔗 **Connection Management** - Easy connect/disconnect with visual status indicators
-- 📋 **Device List** - Shows both paired and discovered devices
-- ⚡ **Auto-reconnection** - Handles connection drops gracefully
+### 🔵 Core Bluetooth Functionality
+- **Bluetooth Classic Connectivity** - Real-time communication between Android devices
+- **Device Discovery** - Scan for both paired and unpaired nearby devices
+- **Auto Pairing** - Seamlessly pair with devices during connection
+- **Connection Management** - Robust connect/disconnect with status indicators
+
+### 💬 Chat & Messaging  
+- **Real-time Messaging** - Instant send/receive with message bubbles
+- **Chat Sessions** - Persistent chat history with automatic session management
+- **Message History** - Messages saved locally with timestamps
+- **Session Recovery** - Resume conversations from previous sessions
+
+### 👤 Profile Management
+- **Profile Setup** - Initial nickname and avatar selection
+- **Avatar Customization** - Choose from emoji avatars
+- **Profile Persistence** - Settings saved locally
+
+### 🎨 Modern UI/UX
+- **Bottom Tab Navigation** - Easy navigation between Discover, Chats, and Settings
+- **Material Design** - Clean, modern interface with consistent styling
+- **Dark Mode Ready** - Prepared for theme switching
+- **Responsive Design** - Works across different screen sizes
 
 ## 🛠️ Technologies Used
 
-- **React Native 0.80.1** - Cross-platform mobile development
-- **react-native-bluetooth-classic** - Bluetooth Classic communication
-- **React Navigation 6** - Screen navigation
+- **React Native 0.80.1** - Cross-platform mobile development  
+- **React Navigation 7.x** - Stack and tab navigation
+- **react-native-bluetooth-classic** - Bluetooth Classic connectivity
+- **AsyncStorage** - Local data persistence
+- **Context API** - Global state management
 - **TypeScript** - Type-safe development
+- **Android SDK** - Native Android functionality
 
 ## 📋 Prerequisites
 
@@ -80,16 +98,24 @@ npx react-native run-android
 
 ```
 ChillChatApp/
-├── android/                     # Android native code
+├── android/                         # Android native code
 ├── screens/
-│   ├── HomeScreen.js            # Device scanning and connection
-│   └── ChatScreen.js            # Chat interface
+│   ├── 👤 ProfileScreen.tsx         # Initial profile setup  
+│   ├── 🏠 HomeScreen.js             # Device discovery & scanning
+│   ├── 📋 ChatListScreen.tsx        # Active/recent chat sessions
+│   ├── 💬 ChatScreen.js             # Real-time messaging interface
+│   └── ⚙️ SettingsScreen.tsx        # App settings & preferences
 ├── services/
-│   └── BluetoothService.js      # Bluetooth logic and communication
+│   └── 🔵 BluetoothService.js       # Complete Bluetooth logic
 ├── components/
-│   └── MessageBubble.js         # Chat message UI component
-├── App.tsx                      # Main app with navigation
-└── package.json                 # Dependencies and scripts
+│   ├── 💭 MessageBubble.js          # Chat message UI component
+│   └── 📱 DeviceItem.tsx            # Bluetooth device card
+├── contexts/
+│   └── 👤 ProfileContext.tsx        # Global profile state
+├── utils/
+│   └── 💾 storage.ts                # AsyncStorage helpers
+├── App.tsx                          # Main app with navigation
+└── package.json                     # Dependencies and scripts
 ```
 
 ## 🔧 Key Components
