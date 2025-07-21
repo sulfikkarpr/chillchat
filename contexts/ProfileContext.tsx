@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import safeStorage from '../utils/safeStorage';
 
 interface ProfileData {
   nickname: string;
@@ -39,7 +39,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
   const loadProfile = async () => {
     try {
-      const savedProfile = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
+      const savedProfile = await safeStorage.getItem(PROFILE_STORAGE_KEY);
       if (savedProfile) {
         const parsedProfile = JSON.parse(savedProfile);
         setProfile({ ...defaultProfile, ...parsedProfile });
@@ -55,7 +55,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
     try {
       const newProfile = { ...profile, ...updates };
       setProfile(newProfile);
-      await AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
+      await safeStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
     } catch (error) {
       console.error('Error saving profile:', error);
       throw error;
@@ -65,7 +65,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   const clearProfile = async () => {
     try {
       setProfile(defaultProfile);
-      await AsyncStorage.removeItem(PROFILE_STORAGE_KEY);
+      await safeStorage.removeItem(PROFILE_STORAGE_KEY);
     } catch (error) {
       console.error('Error clearing profile:', error);
       throw error;

@@ -5,13 +5,14 @@
  * @format
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ProfileProvider, useProfile } from './contexts/ProfileContext';
+import { runAllTests } from './utils/storageTest';
 
 import ProfileScreen from './screens/ProfileScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -129,6 +130,13 @@ const AppNavigator = () => {
 };
 
 function App(): React.JSX.Element {
+  useEffect(() => {
+    // Run storage tests on app start to debug issues
+    setTimeout(() => {
+      runAllTests();
+    }, 2000);
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ProfileProvider>

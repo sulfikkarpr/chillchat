@@ -7,6 +7,7 @@ import {
   generateDeviceId,
   generateMessageId 
 } from '../utils/storage';
+import safeStorage from '../utils/safeStorage';
 
 class BluetoothService {
   constructor() {

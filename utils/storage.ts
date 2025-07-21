@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import safeStorage from './safeStorage';
 
 export interface ChatMessage {
   id: string;
@@ -39,7 +39,7 @@ export const saveChatSession = async (session: ChatSession): Promise<void> => {
       existingSessions.push(session);
     }
     
-    await AsyncStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(existingSessions));
+    await safeStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(existingSessions));
   } catch (error) {
     console.error('Error saving chat session:', error);
     throw error;
@@ -48,7 +48,7 @@ export const saveChatSession = async (session: ChatSession): Promise<void> => {
 
 export const getChatSessions = async (): Promise<ChatSession[]> => {
   try {
-    const sessionsData = await AsyncStorage.getItem(CHAT_SESSIONS_KEY);
+    const sessionsData = await safeStorage.getItem(CHAT_SESSIONS_KEY);
     return sessionsData ? JSON.parse(sessionsData) : [];
   } catch (error) {
     console.error('Error getting chat sessions:', error);
@@ -70,7 +70,7 @@ export const deleteChatSession = async (deviceId: string): Promise<void> => {
   try {
     const sessions = await getChatSessions();
     const filteredSessions = sessions.filter(s => s.deviceId !== deviceId);
-    await AsyncStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(filteredSessions));
+    await safeStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(filteredSessions));
   } catch (error) {
     console.error('Error deleting chat session:', error);
     throw error;
@@ -79,7 +79,7 @@ export const deleteChatSession = async (deviceId: string): Promise<void> => {
 
 export const clearAllChatSessions = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(CHAT_SESSIONS_KEY);
+    await safeStorage.removeItem(CHAT_SESSIONS_KEY);
   } catch (error) {
     console.error('Error clearing chat sessions:', error);
     throw error;
@@ -96,7 +96,7 @@ export const updateSessionActiveStatus = async (deviceId: string, isActive: bool
       if (isActive) {
         sessions[sessionIndex].lastConnected = new Date().toISOString();
       }
-      await AsyncStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
+      await safeStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
     }
   } catch (error) {
     console.error('Error updating session status:', error);
@@ -112,7 +112,7 @@ export const addMessageToSession = async (deviceId: string, message: ChatMessage
     if (sessionIndex >= 0) {
       sessions[sessionIndex].messages.push(message);
       sessions[sessionIndex].lastConnected = new Date().toISOString();
-      await AsyncStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
+      await safeStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
     }
   } catch (error) {
     console.error('Error adding message to session:', error);
@@ -125,7 +125,7 @@ export const saveAppSettings = async (settings: Partial<AppSettings>): Promise<v
   try {
     const currentSettings = await getAppSettings();
     const newSettings = { ...currentSettings, ...settings };
-    await AsyncStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(newSettings));
+    await safeStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(newSettings));
   } catch (error) {
     console.error('Error saving app settings:', error);
     throw error;
@@ -134,7 +134,7 @@ export const saveAppSettings = async (settings: Partial<AppSettings>): Promise<v
 
 export const getAppSettings = async (): Promise<AppSettings> => {
   try {
-    const settingsData = await AsyncStorage.getItem(APP_SETTINGS_KEY);
+    const settingsData = await safeStorage.getItem(APP_SETTINGS_KEY);
     const defaultSettings: AppSettings = {
       autoConnect: false,
       theme: 'light',
