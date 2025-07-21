@@ -75,7 +75,7 @@ const TabNavigator = () => {
 };
 
 const AppNavigator = () => {
-  const { profile, loading } = ProfileProvider.useProfile();
+  const { profile, loading } = useProfile();
 
   if (loading) {
     return null; // Or a loading screen
