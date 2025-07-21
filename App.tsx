@@ -13,6 +13,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ProfileProvider, useProfile } from './contexts/ProfileContext';
 import { runAllTests } from './utils/storageTest';
+import { runQuickTest } from './utils/comprehensiveTest';
+import { runAllNavigationTests } from './utils/navigationTester';
 
 import ProfileScreen from './screens/ProfileScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -133,10 +135,28 @@ const AppNavigator = () => {
 
 function App(): React.JSX.Element {
   useEffect(() => {
-    // Run storage tests on app start to debug issues
-    setTimeout(() => {
-      runAllTests();
-    }, 2000);
+    // Run comprehensive testing suite on app start
+    setTimeout(async () => {
+      console.log('🚀 Starting ChillChat Comprehensive Testing Suite...');
+      console.log('=' * 60);
+      
+      // Run storage tests
+      console.log('📱 1. Running Storage Tests...');
+      await runAllTests();
+      
+      // Run comprehensive functionality tests  
+      console.log('\n🧪 2. Running Comprehensive Tests...');
+      await runQuickTest();
+      
+      // Run navigation test definitions
+      console.log('\n🧭 3. Loading Navigation Tests...');
+      runAllNavigationTests();
+      
+      console.log('\n🎉 All automated tests completed!');
+      console.log('📝 Check console for detailed test results');
+      console.log('🧭 Manual navigation testing ready');
+      console.log('=' * 60);
+    }, 3000); // Increased timeout to allow app to fully load
   }, []);
 
   return (

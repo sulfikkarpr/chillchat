@@ -13,6 +13,7 @@ import {
 import { useProfile } from '../contexts/ProfileContext';
 import BluetoothService from '../services/BluetoothService';
 import DeviceItem from '../components/DeviceItem';
+import TestingPanel from '../components/TestingPanel';
 
 const HomeScreen = ({ navigation }) => {
   const { profile } = useProfile();
@@ -21,6 +22,7 @@ const HomeScreen = ({ navigation }) => {
   const [isBluetoothEnabled, setIsBluetoothEnabled] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [connectingDevice, setConnectingDevice] = useState(null);
+  const [showTestingPanel, setShowTestingPanel] = useState(false);
 
   useEffect(() => {
     initializeBluetooth();
@@ -154,6 +156,14 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={styles.title}>Discover Devices</Text>
         <Text style={styles.subtitle}>Welcome {profile.nickname} {profile.avatar}</Text>
+        
+        {/* Testing Button */}
+        <TouchableOpacity 
+          style={styles.testingButton}
+          onPress={() => setShowTestingPanel(true)}
+        >
+          <Text style={styles.testingButtonText}>🧪 Testing</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -200,6 +210,13 @@ const HomeScreen = ({ navigation }) => {
           )}
         </View>
       </View>
+      
+      {/* Testing Panel */}
+      <TestingPanel
+        visible={showTestingPanel}
+        onClose={() => setShowTestingPanel(false)}
+        currentScreen="Discover"
+      />
     </View>
   );
 };
@@ -277,6 +294,20 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  testingButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  testingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 
 });
