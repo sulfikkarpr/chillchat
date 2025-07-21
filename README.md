@@ -47,32 +47,63 @@ A comprehensive React Native chat application that enables peer-to-peer communic
 
 ## 🚀 Installation & Setup
 
-### 1. Clone the Repository
+### 📱 **Option 1: APK Installation (Recommended - No USB Required)**
+
 ```bash
+# 1. Clone and setup
 git clone <your-repo-url>
 cd ChillChatApp
-```
-
-### 2. Install Dependencies
-```bash
 npm install
+
+# 2. Generate APK for wireless installation
+./quick-apk.sh
+# This creates 'chillchat-app.apk' that you can transfer to your phone
+
+# OR use the full installer with options
+./install-mobile.sh
 ```
 
-### 3. Android Setup
-Make sure you have Android development environment set up:
+**Transfer APK to Phone:**
+- Email APK to yourself and download on phone
+- Upload to Google Drive/Dropbox and download
+- Copy via USB cable to phone storage
+
+**Install on Phone:**
+1. Enable "Install Unknown Apps" in Android settings
+2. Tap the APK file to install
+3. Grant permissions and launch ChillChat!
+
+---
+
+### 🔌 **Option 2: Direct USB Installation**
+
 ```bash
-# For Linux/Mac
+# 1. Clone and setup
+git clone <your-repo-url>
+cd ChillChatApp
+npm install
+
+# 2. Android Environment Setup
 export ANDROID_HOME=$HOME/Android/Sdk
-export PATH=$PATH:$ANDROID_HOME/emulator
-export PATH=$PATH:$ANDROID_HOME/tools
-export PATH=$PATH:$ANDROID_HOME/tools/bin
 export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+# 3. Connect device via USB and run
+npx react-native run-android
 ```
 
-### 4. Run the Application
+---
+
+### 📦 **APK Generation Scripts**
+
 ```bash
-# Make sure you have an Android device connected via USB with Developer Options enabled
-npx react-native run-android
+# Quick APK generation (fastest)
+./quick-apk.sh
+
+# Full APK generation with options (debug/release/signed)
+./generate-apk.sh
+
+# Complete installation assistant
+./install-mobile.sh
 ```
 
 ## 📱 Usage Instructions

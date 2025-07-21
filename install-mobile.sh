@@ -85,13 +85,45 @@ adb devices
 # Ask user for installation method
 echo ""
 echo "Choose installation method:"
-echo "1. Install directly on connected device (development build)"
-echo "2. Generate APK file for manual installation"
+echo "1. Generate APK file for wireless installation (RECOMMENDED)"
+echo "2. Install directly on connected device (requires USB)"
 echo "3. Generate signed APK for distribution"
 read -p "Enter your choice (1/2/3): " choice
 
 case $choice in
     1)
+        print_status "Generating APK for wireless installation..."
+        print_warning "This may take several minutes on first build..."
+        cd android
+        if ./gradlew assembleRelease; then
+            APK_PATH="app/build/outputs/apk/release/app-release.apk"
+            if [ -f "$APK_PATH" ]; then
+                print_success "APK generated successfully!"
+                print_status "APK location: android/$APK_PATH"
+                print_status "APK size: $(du -h $APK_PATH | cut -f1)"
+                
+                # Copy APK to convenient location
+                COPY_PATH="../chillchat-app.apk"
+                cp "$APK_PATH" "$COPY_PATH"
+                print_status "APK also copied to: chillchat-app.apk"
+                
+                echo ""
+                print_success "📱 APK Installation Instructions:"
+                echo "1. Transfer APK to your phone (email, Google Drive, etc.)"
+                echo "2. Enable 'Install Unknown Apps' in Android settings"
+                echo "3. Tap APK file to install"
+                echo "4. Grant permissions and launch ChillChat!"
+            else
+                print_error "APK file not found after build"
+            fi
+        else
+            print_error "APK generation failed"
+            exit 1
+        fi
+        cd ..
+        ;;
+        
+    2)
         print_status "Installing directly on connected device..."
         print_warning "This may take several minutes on first build..."
         
@@ -118,26 +150,6 @@ case $choice in
         print_status "Metro bundler is running for development"
         print_warning "Press Ctrl+C to stop Metro bundler"
         wait $METRO_PID
-        ;;
-        
-    2)
-        print_status "Generating unsigned APK..."
-        cd android
-        if ./gradlew assembleRelease; then
-            APK_PATH="app/build/outputs/apk/release/app-release.apk"
-            if [ -f "$APK_PATH" ]; then
-                print_success "APK generated successfully!"
-                print_status "APK location: android/$APK_PATH"
-                print_status "Transfer this file to your phone and install it"
-                print_warning "Enable 'Install Unknown Apps' in phone settings first"
-            else
-                print_error "APK file not found after build"
-            fi
-        else
-            print_error "APK generation failed"
-            exit 1
-        fi
-        cd ..
         ;;
         
     3)
