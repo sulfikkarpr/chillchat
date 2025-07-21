@@ -1,5 +1,127 @@
 # 🛠️ ChillChat Troubleshooting Guide
 
+## 🔨 Native Module Build Errors
+
+### Problem: `externalNativeBuildCleanDebug FAILED`
+
+```
+> Task :app:externalNativeBuildCleanDebug FAILED
+Clean react_codegen_RNVectorIconsSpec-armeabi-v7a, react_codegen_safeareacontext-armeabi-v7a, react_codegen_rnscreens-armeabi-v7a, appmodules-armeabi-v7a, react_codegen_rnasyncstorage-armeabi-v7a
+```
+
+This error occurs when native modules (vector icons, safe area context, screens, async storage) fail to build or clean properly.
+
+#### ✅ **Automated Fix (Recommended)**
+
+```bash
+# Run the comprehensive fix script
+./fix-build-errors.sh
+```
+
+This script will:
+- Deep clean all caches (React Native, npm, Gradle)
+- Reinstall dependencies properly
+- Fix native module linking issues
+- Update Android configuration
+- Test the build process
+
+#### 🔧 **Manual Fix Steps**
+
+**Step 1: Deep Clean Everything**
+```bash
+# Clean React Native cache
+npx react-native start --reset-cache
+
+# Clean package manager cache
+npm cache clean --force
+
+# Clean Gradle cache
+cd android
+./gradlew clean
+./gradlew cleanBuildCache
+./gradlew --stop
+cd ..
+
+# Remove node_modules
+rm -rf node_modules
+
+# Clean temporary files
+rm -rf /tmp/react-native-*
+rm -rf /tmp/metro-*
+```
+
+**Step 2: Reinstall Dependencies**
+```bash
+npm install
+```
+
+**Step 3: Fix Native Module Linking**
+```bash
+# Create react-native.config.js for proper linking
+cat > react-native.config.js << 'EOF'
+module.exports = {
+  dependencies: {
+    'react-native-vector-icons': {
+      platforms: {
+        android: {
+          sourceDir: '../node_modules/react-native-vector-icons/android/',
+          packageImportPath: 'import io.github.react_native_vector_icons.VectorIconsPackage;',
+        },
+      },
+    },
+  },
+  assets: ['./assets/fonts/'],
+};
+EOF
+```
+
+**Step 4: Test Build**
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+#### 🔍 **Advanced Troubleshooting**
+
+**If build still fails, check:**
+
+1. **Java Version**: 
+   ```bash
+   java -version
+   # Should be Java 11 or 17
+   ```
+
+2. **Gradle Version**:
+   ```bash
+   cd android
+   ./gradlew --version
+   ```
+
+3. **Android SDK**:
+   ```bash
+   echo $ANDROID_HOME
+   ls $ANDROID_HOME/platforms/
+   # Should show android-31 or higher
+   ```
+
+4. **Build with Full Logs**:
+   ```bash
+   cd android
+   ./gradlew assembleDebug --stacktrace --info
+   ```
+
+#### 💡 **Common Causes & Solutions**
+
+| Problem | Solution |
+|---------|----------|
+| **Outdated Android Studio** | Update to latest version |
+| **Missing SDK Platforms** | Install Android SDK Platform 31+ |
+| **Corrupted Gradle Cache** | Run `./gradlew --stop` and clean |
+| **Wrong Java Version** | Use Java 11 or 17 |
+| **Incomplete node_modules** | Delete and reinstall |
+
+---
+
 ## 📱 AsyncStorage Issues
 
 ### Problem: "NativeModule.AsyncStorage is null" Error
