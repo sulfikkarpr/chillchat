@@ -42,16 +42,24 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
     setLoading(true);
     try {
+      console.log('📝 ProfileScreen - Saving profile:', {
+        nickname: nickname.trim(),
+        avatar: selectedAvatar,
+        isProfileSetup: true,
+      });
+      
       await updateProfile({
         nickname: nickname.trim(),
         avatar: selectedAvatar,
         isProfileSetup: true,
       });
       
-      // Navigate to Home screen
+      console.log('✅ ProfileScreen - Profile saved, navigating to Main tabs');
+      
+      // Navigate to Main screen (tabs)
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Home' }],
+        routes: [{ name: 'Main' }],
       });
     } catch (error) {
       console.error('Error saving profile:', error);

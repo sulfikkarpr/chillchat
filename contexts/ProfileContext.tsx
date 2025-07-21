@@ -54,8 +54,14 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   const updateProfile = async (updates: Partial<ProfileData>) => {
     try {
       const newProfile = { ...profile, ...updates };
+      console.log('🔄 ProfileContext - Updating profile:', { 
+        oldProfile: profile, 
+        updates, 
+        newProfile 
+      });
       setProfile(newProfile);
       await safeStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
+      console.log('✅ ProfileContext - Profile updated successfully');
     } catch (error) {
       console.error('Error saving profile:', error);
       throw error;

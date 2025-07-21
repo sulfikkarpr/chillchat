@@ -77,6 +77,14 @@ const TabNavigator = () => {
 const AppNavigator = () => {
   const { profile, loading } = useProfile();
 
+  // Debug logging
+  console.log('🔍 AppNavigator - Profile state:', {
+    loading,
+    isProfileSetup: profile.isProfileSetup,
+    nickname: profile.nickname,
+    initialRoute: profile.isProfileSetup ? "Main" : "Profile"
+  });
+
   if (loading) {
     return null; // Or a loading screen
   }
@@ -109,13 +117,7 @@ const AppNavigator = () => {
             headerShown: false,
           }}
         />
-        <Stack.Screen 
-          name="Home" 
-          component={HomeScreen}
-          options={{
-            headerShown: false,
-          }}
-        />
+
         <Stack.Screen 
           name="Chat" 
           component={ChatScreen}

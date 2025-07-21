@@ -143,7 +143,7 @@ const ChatListScreen: React.FC<ChatListScreenProps> = ({ navigation }) => {
       </Text>
       <TouchableOpacity
         style={styles.scanButton}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('Discover')}
       >
         <Text style={styles.scanButtonText}>Scan for Devices</Text>
       </TouchableOpacity>
