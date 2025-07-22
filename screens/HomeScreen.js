@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  Linking,
 } from 'react-native';
 import { useProfile } from '../contexts/ProfileContext';
 import BluetoothService from '../services/BluetoothService';
@@ -23,6 +24,8 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [connectingDevice, setConnectingDevice] = useState(null);
   const [showTestingPanel, setShowTestingPanel] = useState(false);
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [initializationComplete, setInitializationComplete] = useState(false);
 
   useEffect(() => {
     initializeBluetooth();
@@ -30,36 +33,65 @@ const HomeScreen = ({ navigation }) => {
 
   const initializeBluetooth = async () => {
     try {
-      // Request permissions
+      console.log('🚀 Initializing Bluetooth...');
+      
+      // Step 1: Request permissions
       const permissionsGranted = await BluetoothService.requestPermissions();
+      setPermissionsGranted(permissionsGranted);
+      
       if (!permissionsGranted) {
         Alert.alert(
           'Permissions Required',
-          'This app needs Bluetooth permissions to function properly.',
-          [{ text: 'OK' }]
+          'ChillChat needs Bluetooth and Location permissions to discover devices. Please grant permissions and restart the app.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Try Again', onPress: initializeBluetooth },
+            { text: 'Settings', onPress: openAppSettings },
+          ]
         );
+        setInitializationComplete(true);
         return;
       }
 
-      // Check if Bluetooth is enabled
+      // Step 2: Check if Bluetooth is enabled
       const enabled = await BluetoothService.isBluetoothEnabled();
       setIsBluetoothEnabled(enabled);
 
       if (!enabled) {
         Alert.alert(
-          'Bluetooth Disabled',
-          'Please enable Bluetooth to use this app.',
+          'Bluetooth Required',
+          'Please enable Bluetooth to discover and connect to devices.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Enable', onPress: enableBluetooth },
+            { text: 'Enable Bluetooth', onPress: enableBluetooth },
           ]
         );
       } else {
-        loadBondedDevices();
+        // Step 3: Load initial devices
+        await loadBondedDevices();
       }
+      
+      setInitializationComplete(true);
     } catch (error) {
-      console.error('Error initializing Bluetooth:', error);
-      Alert.alert('Error', 'Failed to initialize Bluetooth');
+      console.error('❌ Error initializing Bluetooth:', error);
+      Alert.alert(
+        'Initialization Error', 
+        'Failed to initialize Bluetooth. Please restart the app and try again.',
+        [{ text: 'OK' }]
+      );
+      setInitializationComplete(true);
+    }
+  };
+
+  const openAppSettings = () => {
+    try {
+      Linking.openSettings();
+    } catch (error) {
+      Alert.alert(
+        'Manual Setup Required',
+        'Please go to Settings → Apps → ChillChat → Permissions and enable:\n\n• Location\n• Nearby devices (Bluetooth)\n• Storage',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -68,35 +100,54 @@ const HomeScreen = ({ navigation }) => {
       const enabled = await BluetoothService.enableBluetooth();
       setIsBluetoothEnabled(enabled);
       if (enabled) {
-        loadBondedDevices();
+        await loadBondedDevices();
       }
     } catch (error) {
-      console.error('Error enabling Bluetooth:', error);
-      Alert.alert('Error', 'Failed to enable Bluetooth');
+      console.error('❌ Error enabling Bluetooth:', error);
+      Alert.alert(
+        'Bluetooth Error', 
+        'Could not enable Bluetooth automatically. Please enable it manually in your device settings.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
   const loadBondedDevices = async () => {
     try {
+      console.log('📱 Loading bonded devices...');
       const bondedDevices = await BluetoothService.getBondedDevices();
       setDevices(bondedDevices);
+      console.log(`✅ Loaded ${bondedDevices.length} bonded devices`);
     } catch (error) {
-      console.error('Error loading bonded devices:', error);
+      console.error('❌ Error loading bonded devices:', error);
     }
   };
 
   const scanForDevices = async () => {
-    if (!isBluetoothEnabled) {
-      Alert.alert('Bluetooth Disabled', 'Please enable Bluetooth first');
+    // Allow scanning even if Bluetooth appears disabled - let the service handle it
+    if (!permissionsGranted) {
+      Alert.alert(
+        'Permissions Required',
+        'Please grant Bluetooth permissions first.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Grant Permissions', onPress: initializeBluetooth },
+        ]
+      );
       return;
     }
 
     setIsScanning(true);
     try {
+      console.log('🔍 Starting device scan...');
+      
+      // First load bonded devices
       const bondedDevices = await BluetoothService.getBondedDevices();
+      
+      // Then discover new devices
       const discoveredDevices = await BluetoothService.startDiscovery();
       
-      // Combine bonded and discovered devices, avoiding duplicates
+      // Combine both lists, avoiding duplicates
       const allDevices = [...bondedDevices];
       discoveredDevices.forEach(discovered => {
         if (!allDevices.find(device => device.address === discovered.address)) {
@@ -105,9 +156,22 @@ const HomeScreen = ({ navigation }) => {
       });
       
       setDevices(allDevices);
+      console.log(`✅ Found total of ${allDevices.length} devices`);
+      
+      if (allDevices.length === 0) {
+        Alert.alert(
+          'No Devices Found',
+          'Make sure other devices have Bluetooth enabled and are discoverable. You can also try:\n\n• Move closer to other devices\n• Make sure other devices are not already connected\n• Try scanning again',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
-      console.error('Error scanning for devices:', error);
-      Alert.alert('Error', 'Failed to scan for devices');
+      console.error('❌ Error scanning for devices:', error);
+      Alert.alert(
+        'Scan Error', 
+        'Could not scan for devices. Please check your Bluetooth settings and try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsScanning(false);
     }
@@ -118,18 +182,28 @@ const HomeScreen = ({ navigation }) => {
     
     setConnectingDevice(device.address);
     try {
+      console.log(`🔗 Connecting to ${device.name} (${device.address})`);
       const connectedDevice = await BluetoothService.connectToDevice(device.address);
       if (connectedDevice) {
+        console.log('✅ Connected successfully!');
         navigation.navigate('Chat', { 
           device: connectedDevice,
           fromDiscovery: true 
         });
       } else {
-        Alert.alert('Connection Failed', 'Could not connect to the device. Please try again.');
+        Alert.alert(
+          'Connection Failed', 
+          `Could not connect to ${device.name}. Make sure the device is nearby and available for pairing.`,
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      console.error('Error connecting to device:', error);
-      Alert.alert('Connection Error', 'Failed to connect to device. Make sure it\'s nearby and available.');
+      console.error('❌ Error connecting to device:', error);
+      Alert.alert(
+        'Connection Error', 
+        `Failed to connect to ${device.name}. Please make sure:\n\n• The device is nearby\n• The device is not connected to another app\n• Try pairing the device first in system settings`,
+        [{ text: 'OK' }]
+      );
     } finally {
       setConnectingDevice(null);
     }
@@ -149,6 +223,43 @@ const HomeScreen = ({ navigation }) => {
     />
   );
 
+  const getButtonText = () => {
+    if (isScanning) return 'Scanning...';
+    if (!permissionsGranted) return 'Grant Permissions';
+    if (!isBluetoothEnabled) return 'Enable Bluetooth';
+    return 'Scan for Devices';
+  };
+
+  const getButtonDisabled = () => {
+    return isScanning; // Only disable while actually scanning
+  };
+
+  const handleButtonPress = () => {
+    if (!permissionsGranted) {
+      initializeBluetooth();
+    } else if (!isBluetoothEnabled) {
+      enableBluetooth();
+    } else {
+      scanForDevices();
+    }
+  };
+
+  const getEmptyStateText = () => {
+    if (!initializationComplete) {
+      return 'Initializing Bluetooth...';
+    }
+    if (!permissionsGranted) {
+      return 'Please grant Bluetooth permissions to discover devices.';
+    }
+    if (!isBluetoothEnabled) {
+      return 'Please enable Bluetooth to see available devices.';
+    }
+    if (devices.length === 0) {
+      return 'No devices found. Tap "Scan for Devices" to search for nearby Bluetooth devices.';
+    }
+    return '';
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#007AFF" />
@@ -156,6 +267,14 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={styles.title}>Discover Devices</Text>
         <Text style={styles.subtitle}>Welcome {profile.nickname} {profile.avatar}</Text>
+        
+        {/* Status indicator */}
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusText}>
+            📶 Bluetooth: {isBluetoothEnabled ? '✅ Enabled' : '❌ Disabled'} | 
+            🔐 Permissions: {permissionsGranted ? '✅ Granted' : '❌ Pending'}
+          </Text>
+        </View>
         
         {/* Testing Button */}
         <TouchableOpacity 
@@ -169,18 +288,26 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.content}>
         <View style={styles.scanSection}>
           <TouchableOpacity
-            style={[styles.scanButton, !isBluetoothEnabled && styles.disabledButton]}
-            onPress={scanForDevices}
-            disabled={isScanning || !isBluetoothEnabled}
+            style={[
+              styles.scanButton, 
+              getButtonDisabled() && styles.disabledButton
+            ]}
+            onPress={handleButtonPress}
+            disabled={getButtonDisabled()}
           >
             {isScanning ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.scanButtonText}>
-                {isBluetoothEnabled ? 'Scan for Devices' : 'Enable Bluetooth'}
+                {getButtonText()}
               </Text>
             )}
           </TouchableOpacity>
+          
+          {/* Help text */}
+          <Text style={styles.helpText}>
+            💡 Tip: Make sure other devices have Bluetooth enabled and are discoverable
+          </Text>
         </View>
 
         <View style={styles.devicesSection}>
@@ -191,11 +318,18 @@ const HomeScreen = ({ navigation }) => {
           {devices.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
-                {isBluetoothEnabled 
-                  ? 'No devices found. Tap "Scan for Devices" to search.'
-                  : 'Enable Bluetooth to see available devices.'
-                }
+                {getEmptyStateText()}
               </Text>
+              {!permissionsGranted && (
+                <TouchableOpacity 
+                  style={styles.settingsButton}
+                  onPress={openAppSettings}
+                >
+                  <Text style={styles.settingsButtonText}>
+                    Open App Settings
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <FlatList
@@ -243,6 +377,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#E3F2FD',
     opacity: 0.9,
+    marginBottom: 10,
+  },
+  statusContainer: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 10,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
   },
   content: {
     flex: 1,
@@ -274,6 +421,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+  helpText: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
+  },
   devicesSection: {
     flex: 1,
   },
@@ -294,6 +448,18 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 20,
+  },
+  settingsButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  settingsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   testingButton: {
     position: 'absolute',
@@ -309,7 +475,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-
 });
 
 export default HomeScreen;
