@@ -10,6 +10,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { useProfile } from '../contexts/ProfileContext';
 import BluetoothService from '../services/BluetoothService';
@@ -31,7 +32,9 @@ const ChatScreen = ({ navigation, route }) => {
     
     if (device) {
       setConnectedDevice(device);
-      setIsConnected(true);
+      // Check actual connection status
+      const actuallyConnected = BluetoothService.isConnected();
+      setIsConnected(actuallyConnected);
     }
 
     // Load existing session if available
@@ -65,11 +68,12 @@ const ChatScreen = ({ navigation, route }) => {
 
     // Listen for connection changes
     const connectionListener = (connected, device) => {
+      console.log('📡 Connection status changed:', connected, device?.name);
       setIsConnected(connected);
       if (!connected) {
         Alert.alert(
           'Connection Lost',
-          'The Bluetooth connection has been lost.',
+          'The Bluetooth connection has been lost. You will be returned to the previous screen.',
           [
             {
               text: 'OK',
@@ -84,7 +88,7 @@ const ChatScreen = ({ navigation, route }) => {
     BluetoothService.addConnectionListener(connectionListener);
 
     // Add welcome message only for new connections
-    if (!existingSession) {
+    if (!existingSession && device) {
       const welcomeMessage = {
         text: `Connected to ${device?.name || 'device'}. Start chatting!`,
         timestamp: new Date().toISOString(),
@@ -93,9 +97,33 @@ const ChatScreen = ({ navigation, route }) => {
       setMessages([welcomeMessage]);
     }
 
+    // Periodically check connection status
+    const connectionCheckInterval = setInterval(async () => {
+      const actualStatus = await BluetoothService.checkConnectionStatus();
+      if (actualStatus !== isConnected) {
+        setIsConnected(actualStatus);
+      }
+    }, 5000); // Check every 5 seconds
+
+    // Handle keyboard events
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    });
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    });
+
     return () => {
       BluetoothService.removeMessageListener(messageListener);
       BluetoothService.removeConnectionListener(connectionListener);
+      clearInterval(connectionCheckInterval);
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
     };
   }, [route.params?.device, navigation]);
 
@@ -121,10 +149,15 @@ const ChatScreen = ({ navigation, route }) => {
       
       setMessages(prevMessages => [...prevMessages, messageData]);
       setInputText('');
-      scrollToBottom();
+      
+      // Dismiss keyboard and scroll to bottom
+      Keyboard.dismiss();
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
     } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      Alert.alert('Error', 'Failed to send message. Please check the connection and try again.');
     }
   };
 
@@ -172,45 +205,50 @@ const ChatScreen = ({ navigation, route }) => {
   );
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#007AFF" />
       
       {renderConnectionStatus()}
 
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item, index) => index.toString()}
-        style={styles.messagesList}
-        contentContainerStyle={styles.messagesContainer}
-        showsVerticalScrollIndicator={false}
-        onContentSizeChange={scrollToBottom}
-      />
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Type a message..."
-          placeholderTextColor="#999999"
-          multiline
-          maxLength={500}
-          editable={isConnected}
+      <KeyboardAvoidingView 
+        style={styles.chatContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item, index) => index.toString()}
+          style={styles.messagesList}
+          contentContainerStyle={styles.messagesContainer}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToBottom}
         />
-        <TouchableOpacity
-          style={[styles.sendButton, !isConnected && styles.disabledSendButton]}
-          onPress={handleSendMessage}
-          disabled={!isConnected || !inputText.trim()}
-        >
-          <Text style={styles.sendButtonText}>Send</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Type a message..."
+            placeholderTextColor="#999999"
+            multiline
+            maxLength={500}
+            editable={isConnected}
+            returnKeyType="send"
+            onSubmitEditing={handleSendMessage}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!isConnected || !inputText.trim()) && styles.disabledSendButton]}
+            onPress={handleSendMessage}
+            disabled={!isConnected || !inputText.trim()}
+          >
+            <Text style={styles.sendButtonText}>Send</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -218,6 +256,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  chatContainer: {
+    flex: 1,
   },
   connectionStatus: {
     flexDirection: 'row',
@@ -281,9 +322,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 16,
+    paddingBottom: Platform.OS === 'android' ? 16 : 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
+    minHeight: 60,
   },
   textInput: {
     flex: 1,
