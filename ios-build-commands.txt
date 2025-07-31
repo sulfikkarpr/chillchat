@@ -1,0 +1,44 @@
+# Quick Reference: iOS IPA Build Commands
+
+## Prerequisites Check (macOS required)
+xcode-select --install                # Install Xcode Command Line Tools
+which xcodebuild                      # Verify Xcode is installed
+which pod                            # Check CocoaPods
+sudo gem install cocoapods          # Install CocoaPods if missing
+
+## One-Command Build (Recommended)
+./build-ios-ipa.sh                  # Full IPA build
+./build-ios-ipa.sh --simulator      # Simulator build only
+./build-ios-ipa.sh --deps           # Install dependencies only
+./build-ios-ipa.sh --clean          # Clean builds only
+
+## Manual Build Steps
+npm install                          # Install npm dependencies
+cd ios && pod install --repo-update # Install iOS pods
+cd ..                               # Return to project root
+
+# Open in Xcode
+open ios/ChillChatApp.xcworkspace
+
+# Command line archive & export
+xcodebuild archive \
+  -workspace ios/ChillChatApp.xcworkspace \
+  -scheme ChillChatApp \
+  -configuration Release \
+  -archivePath ios/build/ChillChatApp.xcarchive
+
+xcodebuild -exportArchive \
+  -archivePath ios/build/ChillChatApp.xcarchive \
+  -exportPath ios/build/ipa \
+  -exportOptionsPlist ios/ExportOptions.plist
+
+## Troubleshooting
+rm -rf node_modules ios/Pods        # Clean dependencies
+npm install && cd ios && pod install # Reinstall all
+xcodebuild clean -workspace ios/ChillChatApp.xcworkspace -scheme ChillChatApp
+
+## File Locations
+# Final IPA: ./ChillChatApp.ipa
+# Build files: ios/build/
+# Workspace: ios/ChillChatApp.xcworkspace
+# Export config: ios/ExportOptions.plist

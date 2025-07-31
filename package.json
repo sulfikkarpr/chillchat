@@ -5,6 +5,8 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
+    "build:ios": "./build-ios-ipa.sh",
+    "build:ios:simulator": "./build-ios-ipa.sh --simulator",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest"
