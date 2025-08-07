@@ -229,7 +229,14 @@ class BluetoothService {
         await this.disconnectDevice();
       }
 
-      console.log('Attempting to connect to:', deviceAddress);
+      console.log('🔗 Attempting to connect to:', deviceAddress);
+      
+      // Check if Bluetooth is enabled before connecting
+      const isEnabled = await this.isBluetoothEnabled();
+      if (!isEnabled) {
+        throw new Error('Bluetooth is not enabled');
+      }
+
       const device = await RNBluetoothClassic.connectToDevice(deviceAddress);
       
       if (device) {
@@ -237,28 +244,45 @@ class BluetoothService {
         await this.createOrUpdateSession(device);
         this.startListeningForMessages();
         this.notifyConnectionListeners(true, device);
+        console.log('✅ Successfully connected to:', device.name);
         return device;
       }
-      return null;
-    } catch (error) {
-      console.error('Error connecting to device:', error);
+      
+      console.log('❌ Failed to connect - device returned null');
       this.notifyConnectionListeners(false, null);
       return null;
+    } catch (error) {
+      console.error('❌ Error connecting to device:', error);
+      this.connectedDevice = null;
+      this.currentSession = null;
+      this.notifyConnectionListeners(false, null);
+      throw error;
     }
   }
 
   // Disconnect from current device
   async disconnectDevice() {
     try {
-      if (this.connectedDevice && this.currentSession) {
+      console.log('🔌 Disconnecting from device...');
+      
+      if (this.currentSession) {
         await updateSessionActiveStatus(this.currentSession.deviceId, false);
-        await this.connectedDevice.disconnect();
-        this.connectedDevice = null;
-        this.currentSession = null;
-        this.notifyConnectionListeners(false, null);
       }
+      
+      if (this.connectedDevice) {
+        await this.connectedDevice.disconnect();
+        console.log('✅ Device disconnected successfully');
+      }
+      
+      this.connectedDevice = null;
+      this.currentSession = null;
+      this.notifyConnectionListeners(false, null);
     } catch (error) {
-      console.error('Error disconnecting device:', error);
+      console.error('❌ Error disconnecting device:', error);
+      // Still cleanup local state even if disconnect fails
+      this.connectedDevice = null;
+      this.currentSession = null;
+      this.notifyConnectionListeners(false, null);
     }
   }
 
@@ -289,22 +313,37 @@ class BluetoothService {
 
     this.connectedDevice.onDataReceived((data) => {
       try {
-        const messageData = JSON.parse(data.data);
+        console.log('📨 Received raw data:', data.data);
+        
+        let messageData;
+        try {
+          messageData = JSON.parse(data.data);
+        } catch (parseError) {
+          // If JSON parsing fails, treat as plain text
+          messageData = { text: data.data };
+        }
+        
         const receivedMessage = {
-          text: messageData.text,
+          text: messageData.text || data.data,
           timestamp: messageData.timestamp || new Date().toISOString(),
           sender: 'other',
         };
+        
+        console.log('📨 Processed message:', receivedMessage);
         this.notifyMessageListeners(receivedMessage);
       } catch (error) {
-        // If JSON parsing fails, treat as plain text
-        const receivedMessage = {
-          text: data.data,
-          timestamp: new Date().toISOString(),
-          sender: 'other',
-        };
-        this.notifyMessageListeners(receivedMessage);
+        console.error('❌ Error processing received message:', error);
       }
+    });
+
+    // Listen for connection state changes
+    this.connectedDevice.onConnectionLost(() => {
+      console.log('💔 Connection lost');
+      this.connectedDevice = null;
+      if (this.currentSession) {
+        updateSessionActiveStatus(this.currentSession.deviceId, false);
+      }
+      this.notifyConnectionListeners(false, null);
     });
   }
 
@@ -341,6 +380,32 @@ class BluetoothService {
   // Get current connection status
   isConnected() {
     return this.connectedDevice !== null;
+  }
+
+  // Check actual device connection status
+  async checkConnectionStatus() {
+    if (!this.connectedDevice) {
+      return false;
+    }
+
+    try {
+      // Try to check if the device is still connected
+      const isConnected = await this.connectedDevice.isConnected();
+      
+      if (!isConnected) {
+        console.log('🔍 Device no longer connected, cleaning up...');
+        this.connectedDevice = null;
+        if (this.currentSession) {
+          await updateSessionActiveStatus(this.currentSession.deviceId, false);
+        }
+        this.notifyConnectionListeners(false, null);
+      }
+      
+      return isConnected;
+    } catch (error) {
+      console.error('❌ Error checking connection status:', error);
+      return false;
+    }
   }
 
   // Get connected device info

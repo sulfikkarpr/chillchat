@@ -183,6 +183,28 @@ const HomeScreen = ({ navigation }) => {
     setConnectingDevice(device.address);
     try {
       console.log(`🔗 Connecting to ${device.name} (${device.address})`);
+      
+      // Check if already connected to another device
+      const currentlyConnected = BluetoothService.isConnected();
+      if (currentlyConnected) {
+        const currentDevice = BluetoothService.getConnectedDevice();
+        Alert.alert(
+          'Already Connected',
+          `You are already connected to ${currentDevice?.name}. Disconnect first to connect to ${device.name}.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Disconnect & Connect', 
+              onPress: async () => {
+                await BluetoothService.disconnectDevice();
+                connectToDevice(device);
+              }
+            }
+          ]
+        );
+        return;
+      }
+
       const connectedDevice = await BluetoothService.connectToDevice(device.address);
       if (connectedDevice) {
         console.log('✅ Connected successfully!');
@@ -193,17 +215,24 @@ const HomeScreen = ({ navigation }) => {
       } else {
         Alert.alert(
           'Connection Failed', 
-          `Could not connect to ${device.name}. Make sure the device is nearby and available for pairing.`,
+          `Could not connect to ${device.name}. Please try:\n\n• Make sure the device is nearby\n• Ensure Bluetooth is enabled on both devices\n• Try pairing in system settings first`,
           [{ text: 'OK' }]
         );
       }
     } catch (error) {
       console.error('❌ Error connecting to device:', error);
-      Alert.alert(
-        'Connection Error', 
-        `Failed to connect to ${device.name}. Please make sure:\n\n• The device is nearby\n• The device is not connected to another app\n• Try pairing the device first in system settings`,
-        [{ text: 'OK' }]
-      );
+      
+      let errorMessage = `Failed to connect to ${device.name}.`;
+      
+      if (error.message.includes('Bluetooth is not enabled')) {
+        errorMessage = 'Bluetooth is not enabled. Please enable Bluetooth and try again.';
+      } else if (error.message.includes('permission')) {
+        errorMessage = 'Bluetooth permissions are required. Please grant permissions and try again.';
+      } else {
+        errorMessage += '\n\nPlease make sure:\n• The device is nearby and discoverable\n• Bluetooth is enabled on both devices\n• The device is not connected to another app';
+      }
+      
+      Alert.alert('Connection Error', errorMessage, [{ text: 'OK' }]);
     } finally {
       setConnectingDevice(null);
     }
